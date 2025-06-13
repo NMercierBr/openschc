@@ -32,7 +32,7 @@ class FragmentBase():
         self.protocol = protocol
         self.context = context
         self.rule = rule
-        self.mtu = None 
+        self.mtu = 50
         self.l2word = 8 # self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_L2WORDSIZE]
         self.dtag = dtag
         # self.mic is used to check whether All-1 has been sent or not.
@@ -144,6 +144,23 @@ class FragmentBase():
 
         return self.sender_abort_sent
 
+    def pad_bytearrays_to_max_length(self, data: list[bytearray]) -> list[bytearray]:
+        max_len = max(len(b) for b in data)
+        return [bytearray([0x00] * (max_len - len(b)) + list(b)) for b in data]
+
+    def get_xor_bytearray(self, arr):
+        if not arr:
+            return bytearray()
+
+        length = len(arr[0])            #deja paddé donc taille max
+        result = bytearray(length)
+
+        for barr in arr:
+            for i in range(length):
+                result[i] ^= barr[i]
+
+        return result
+
 class FragmentNoAck(FragmentBase):
 
 # 8.4.1.  No-ACK mode
@@ -166,6 +183,15 @@ class FragmentNoAck(FragmentBase):
 #    Fragments MUST use the Regular SCHC Fragment format specified in
 #    Section 8.3.1.1.  The last SCHC Fragment MUST use the All-1 format
 #    specified in Section 8.3.1.2.
+    
+    
+    ruleID_FEC = None   # RuleID of the FEC rule
+    rule_boundTo = None # correspond to the ruleID of the "used" usual fragmentation rule.
+    xorFrags = 3       # number of usual fragments to be sent before the rendondent one.
+
+    circular_buffer = []
+    fragment_counter = -1            #compteur, a besoin de commencer a -1 pour le premier groupe de frag
+
 
     def set_packet(self, packet_bbuf):
         super().set_packet(packet_bbuf)
@@ -176,8 +202,10 @@ class FragmentNoAck(FragmentBase):
         min_size = (frag_msg.get_sender_header_size(self.rule) +
                         frag_msg.get_mic_size(self.rule) + self.l2word)   
         #print ('MTU = ', self.protocol.connectivity_manager.get_mtu("toto"), min_size)
-        if self.protocol.connectivity_manager.get_mtu("toto") < min_size:
-            raise ValueError("the MTU={} is not enough to carry the SCHC fragment of No-ACK mode={}".format(self.mtu, min_size))
+        if self.protocol.connectivity_manager.get_mtu("tototo") < min_size:
+           print("toto")
+           #  raise ValueError("the MTU={} is not enough to carry the SCHC fragment of No-ACK mode={}".format(self.mtu, min_size))
+
 
     def send_frag(self):
         # XXX
@@ -199,7 +227,7 @@ class FragmentNoAck(FragmentBase):
         #                                                       |<- L2 Word
         mtu = self.protocol.connectivity_manager.get_mtu("toto")
         mtu = self.protocol.layer2.get_mtu_size()
-        #print("MTU = ", mtu)
+
         payload_size = (mtu - frag_msg.get_sender_header_size(self.rule))
         remaining_data_size = self.packet_bbuf.count_remaining_bits()
         if remaining_data_size >= payload_size:
@@ -232,7 +260,7 @@ class FragmentNoAck(FragmentBase):
                             remaining_data_size)
                 self.mic_sent = self.get_mic(self.mic_base, last_frag_base_size)
                 self.protocol.session_manager.delete_session(self._session_id)
-                print('MIC Size = ', frag_msg.get_mic_size(self.rule))
+                #print('MIC Size = ', frag_msg.get_mic_size(self.rule))
                 fcn = frag_msg.get_fcn_all_1(self.rule)
                 if enable_statsct:
                     Statsct.set_msg_type("SCHC_ALL_1 ")
@@ -256,7 +284,26 @@ class FragmentNoAck(FragmentBase):
             win=None,
             fcn=fcn,
             mic=self.mic_sent,
-            payload=tile)
+            payload=tile)        
+        
+        if(self.fragment_counter >= 0 and self.fragment_counter <= self.xorFrags):
+            self.circular_buffer.append(tile.get_content())         # get content pour ne pas avoir le /xxx, pour le calcul du xor
+            #print(self.circular_buffer)
+
+        self.fragment_counter += 1
+
+        if(self.fragment_counter >= self.xorFrags):
+            padded_fecbuffer = self.pad_bytearrays_to_max_length(self.circular_buffer)  # on pad tous les elem par rapport a la taille de l'elem max(len())
+            self.circular_buffer.clear()                                                # reset le circular pour le prochain cycle xorfrag
+            xor_buffer = BitBuffer(self.get_xor_bytearray(padded_fecbuffer))            # Xor de tous les frag paddés, TODO attention au suffixe /xxx !!!
+
+            print("******************************* salut je suis le xor *******************************")
+            print(xor_buffer)
+            print("******************************* au revoir de la part du xor ************************")
+
+            self.fragment_counter = 0
+
+        # self.circular_buffer[:-3])
 
         # send a SCHC fragment
         if self.protocol.position == T_POSITION_DEVICE:

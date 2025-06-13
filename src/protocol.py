@@ -29,7 +29,7 @@ class ConnectivityManager:
     """
 
     def __init__(self):
-        self.mtu = 5000
+        self.mtu = 30
 
     def get_mtu (self, device):
         """

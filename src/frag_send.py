@@ -287,9 +287,8 @@ class FragmentNoAck(FragmentBase):
             mic=self.mic_sent,
             payload=tile)
 
-        if(self.fragment_counter >= 0 and self.fragment_counter <= self.xorFrags):
+        if tile is not None and (0 <= self.fragment_counter <= self.xorFrags):
             self.circular_buffer.append(tile.get_content())         # get content pour ne pas avoir le /xxx, pour le calcul du xor
-            #print(self.circular_buffer)
 
         self.fragment_counter += 1
 
@@ -364,8 +363,7 @@ class FragmentNoAck(FragmentBase):
                 payload=self.xor_buffer)
         
             print(" ************************* je être XOR *************************")
-
-
+            
             if self.protocol.position == T_POSITION_DEVICE:
                 dest = self._session_id[0] # core address
             else:
@@ -413,10 +411,7 @@ class FragmentNoAck(FragmentBase):
                 else:
                     print("Unknown position to display frag")
 
-            # self.protocol.scheduler.add_event(0, self.protocol.layer2.send_packet,
-            #                               args, session_id = self._session_id) # Add session_id
             print(" ************************* je plus XOR *************************")
-
             flag_fec = False
 
     def event_sent_frag(self, status=0): # status == nb actually sent (for now)

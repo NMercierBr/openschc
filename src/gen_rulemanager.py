@@ -467,14 +467,14 @@ class RuleManager:
         frag_rule = None
         for dev in self._ctxt:
             for rule in dev["SoR"]:
-                if rule.get(T_RULEID) == bound_id and rule.get(T_RULEIDLENGTH) == bound_len and T_FRAG in rule:
+                if rule[T_RULEID] == bound_id and rule[T_RULEIDLENGTH] == bound_len and T_FRAG in rule:
                     frag_rule = rule
                     break
             if frag_rule:
                 break
         
         if frag_rule is None:
-            raise ValueError(f"Fragmentation rule BoundToID={bound_id} BoundToLength={bound_len} not found.")
+            raise ValueError(f"Forward error correction rule initialization : the associated fragmentation rule {bound_id}/{bound_len} doesnt exist.")
         
         # On sécurise l'acces a la FEC seulement au mode no-ack pour l'instant
         if frag_rule[T_FRAG][T_FRAG_MODE] != T_FRAG_NO_ACK:
@@ -489,6 +489,7 @@ class RuleManager:
 
         arule[T_FRAG_FEC]["FRDirection"] = frag_rule[T_FRAG][T_FRAG_DIRECTION]
 
+        print(arule)
         return arule
 
     def _create_fragmentation_rule (self, nrule):
@@ -801,6 +802,24 @@ class RuleManager:
                         ))
 
                     print ("\\" + "="*87 +"/")
+                elif T_FRAG_FEC in rule:
+                    if rule[T_FRAG_FEC][T_FRAG_DIRECTION] == T_DIR_UP:
+                        dir_c = "^"
+                    else:
+                        dir_c = "v"
+
+                    print ("!" + "="*25 + "+" + "="*61 +"\\")
+                    print ("!{} Forward Error Correction {:<58} {}!"
+                        .format(
+                            dir_c,
+                            "",
+                            dir_c
+                        ))
+                    print ("!{} Bound to the Fragmentation rule : {}/{} {:<45} {}!".format(dir_c, rule[T_FRAG_FEC][T_FRAG_FEC_BOUNDTO_ID],
+                            rule[T_FRAG_FEC][T_FRAG_FEC_BOUNDTO_LENGTH], "", dir_c))
+                    print ("!{} XorFrags : {} {:<71}{}!".format(dir_c, rule[T_FRAG_FEC][T_FRAG_FEC_XORFRAGS],"", dir_c))
+                    print ("\\" + "="*87 +"/")
+
                 elif T_NO_COMP in rule:
                     print ("+"+ "~"*25 + "+")
                     print ("|     NO COMPRESSION      |")

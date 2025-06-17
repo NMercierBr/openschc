@@ -190,7 +190,7 @@ class FragmentNoAck(FragmentBase):
     xorFrags = 3       # number of usual fragments to be sent before the rendondent one.
 
     circular_buffer = []
-    fragment_counter = -1            #compteur, a besoin de commencer a -1 pour le premier groupe de frag
+    fragment_counter = 0      #compteur, a besoin de commencer a -1 pour le premier groupe de frag
     xor_buffer = 0
 
 
@@ -285,7 +285,7 @@ class FragmentNoAck(FragmentBase):
             win=None,
             fcn=fcn,
             mic=self.mic_sent,
-            payload=tile)        
+            payload=tile)
 
         if(self.fragment_counter >= 0 and self.fragment_counter <= self.xorFrags):
             self.circular_buffer.append(tile.get_content())         # get content pour ne pas avoir le /xxx, pour le calcul du xor
@@ -297,10 +297,6 @@ class FragmentNoAck(FragmentBase):
             padded_fecbuffer = self.pad_bytearrays_to_max_length(self.circular_buffer)  # on pad tous les elem par rapport a la taille de l'elem max(len())
             self.circular_buffer.clear()                                                # reset le circular pour le prochain cycle xorfrag
             self.xor_buffer = BitBuffer(self.get_xor_bytearray(padded_fecbuffer))       # Xor de tous les frag paddés, TODO attention au suffixe /xxx !!!
-
-            # print("******************************* salut je suis le xor *******************************")
-            # print(self.xor_buffer)
-            # print("******************************* au revoir de la part du xor ************************")
 
             flag_fec = True
             self.fragment_counter = 0
@@ -359,7 +355,7 @@ class FragmentNoAck(FragmentBase):
                                           args, session_id = self._session_id) # Add session_id
         
         if(flag_fec):
-
+            
             fec_frag = frag_msg.frag_sender_tx(
                 self.rule, dtag=self.dtag,
                 win=None,
@@ -367,6 +363,9 @@ class FragmentNoAck(FragmentBase):
                 mic=self.mic_sent,
                 payload=self.xor_buffer)
         
+            print(" ************************* je être XOR *************************")
+
+
             if self.protocol.position == T_POSITION_DEVICE:
                 dest = self._session_id[0] # core address
             else:
@@ -414,9 +413,8 @@ class FragmentNoAck(FragmentBase):
                 else:
                     print("Unknown position to display frag")
 
-            print(" ************************* je être XOR *************************")
-            self.protocol.scheduler.add_event(0, self.protocol.layer2.send_packet,
-                                          args, session_id = self._session_id) # Add session_id
+            # self.protocol.scheduler.add_event(0, self.protocol.layer2.send_packet,
+            #                               args, session_id = self._session_id) # Add session_id
             print(" ************************* je plus XOR *************************")
 
             flag_fec = False

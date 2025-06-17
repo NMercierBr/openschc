@@ -26,7 +26,7 @@ tunnel.bind((addr, PORT))
 
 # Rule manager
 rm = RM.RuleManager()
-rm.Add(file="icmp-bi.json")
+rm.Add(file="icmp-bi-FEC.json")
 rm.Print()
 
 # Start SCHC stack

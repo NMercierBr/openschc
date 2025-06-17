@@ -363,7 +363,7 @@ class FragmentNoAck(FragmentBase):
                 payload=self.xor_buffer)
         
             print(" ************************* je être XOR *************************")
-            
+
             if self.protocol.position == T_POSITION_DEVICE:
                 dest = self._session_id[0] # core address
             else:

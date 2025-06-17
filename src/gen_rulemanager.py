@@ -426,6 +426,9 @@ class RuleManager:
                 elif T_FRAG in n_rule:
                     r = self._create_fragmentation_rule(n_rule)
                     d["SoR"].append(r)
+                elif T_FRAG_FEC in n_rule :
+                    r = self._create_forwarderrorcorrection_rule(n_rule)
+                    d["SoR"].append(r)
                 elif T_NO_COMP in n_rule:
                     already_exists = self.FindNoCompressionRule(deviceID=device)
                     if already_exists == None:
@@ -439,6 +442,54 @@ class RuleManager:
                 else:
                     raise ValueError ("Rule type undefined")
                 #print (n_rule)
+
+    def _create_forwarderrorcorrection_rule(self, nrule):       #TODO, creation de nouvelle regle de FEC
+        arule = {}
+        if T_RULEID in nrule:
+            arule[T_RULEID] = nrule[T_RULEID]
+        elif T_RULEIDVALUE in nrule:
+            arule[T_RULEID] = nrule[T_RULEIDVALUE]
+        else:
+            raise ValueError("Rule ID missing.")
+        
+        arule[T_RULEIDLENGTH] = nrule[T_RULEIDLENGTH]
+
+        arule[T_FRAG_FEC] = {}
+
+        fec_params = nrule.get(T_FRAG_FEC, {})
+        for required in [T_FRAG_FEC_BOUNDTO_ID, T_FRAG_FEC_BOUNDTO_LENGTH, T_FRAG_FEC_XORFRAGS]:
+            if required not in fec_params:
+                raise ValueError(f"Missing required parameter '{required}' in ForwardErrorCorrection rule.")
+
+        bound_id = fec_params[T_FRAG_FEC_BOUNDTO_ID]
+        bound_len = fec_params[T_FRAG_FEC_BOUNDTO_LENGTH]
+        
+        frag_rule = None
+        for dev in self._ctxt:
+            for rule in dev["SoR"]:
+                if rule.get(T_RULEID) == bound_id and rule.get(T_RULEIDLENGTH) == bound_len and T_FRAG in rule:
+                    frag_rule = rule
+                    break
+            if frag_rule:
+                break
+        
+        if frag_rule is None:
+            raise ValueError(f"Fragmentation rule BoundToID={bound_id} BoundToLength={bound_len} not found.")
+        
+        # On sécurise l'acces a la FEC seulement au mode no-ack pour l'instant
+        if frag_rule[T_FRAG][T_FRAG_MODE] != T_FRAG_NO_ACK:
+            raise ValueError(f"You can use Forward Error Correction, only in No-ACK fragmentation mode")
+
+        arule[T_FRAG_FEC][T_FRAG_FEC_BOUNDTO_ID] = bound_id
+        arule[T_FRAG_FEC][T_FRAG_FEC_BOUNDTO_LENGTH] = bound_len
+        arule[T_FRAG_FEC][T_FRAG_FEC_XORFRAGS] = fec_params[T_FRAG_FEC_XORFRAGS]
+
+        # a partir d'ici, je peux copier des infos de la regle de frag originelle, par exemple comme ca :
+        # arule[T_FRAG_FEC]["FRMode"] = frag_rule[T_FRAG][T_FRAG_MODE]
+
+        arule[T_FRAG_FEC]["FRDirection"] = frag_rule[T_FRAG][T_FRAG_DIRECTION]
+
+        return arule
 
     def _create_fragmentation_rule (self, nrule):
         arule = {}
@@ -546,8 +597,6 @@ class RuleManager:
         if T_ACTION in nrule:
              print ("Warning: using experimental Action")
              arule[T_ACTION] = nrule[T_ACTION]
-
-
 
         arule[T_COMP] = []
 

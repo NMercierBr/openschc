@@ -29,7 +29,7 @@
 	"RuleIDLength" : 10,
 	"ForwardErrorCorrection" : {
 		"BoundToID": 9 ,
-    "BoundToLength" : 5,
+    "BoundToLength" : 4,
     "XorFrags" : 3
 	  	} 
 	  }

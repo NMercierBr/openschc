@@ -12,7 +12,6 @@ import protocol
 import frag_msg
 from frag_tile import TileList
 from frag_bitmap import make_bit_list
-from gen_rulemanager import RuleManager
 
 try:
     import utime as time
@@ -33,11 +32,17 @@ class FragmentBase():
         self.protocol = protocol
         self.context = context
         self.rule = rule
-        print("test : " )
         self.mtu = 50
         self.l2word = 8 # self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_L2WORDSIZE]
         self.dtag = dtag
-        self.fecrule = fecrule
+
+        if fecrule:
+            self.fecrule = fecrule[0]
+            self.fec_enabled = True
+            self.fecrule["Fragmentation"] = rule["Fragmentation"]
+        else:
+            self.fec_enabled = False
+
         # self.mic is used to check whether All-1 has been sent or not.
         self.mic_sent = None
         self.event_id_ack_wait_timer = None
@@ -187,9 +192,7 @@ class FragmentNoAck(FragmentBase):
 #    Section 8.3.1.1.  The last SCHC Fragment MUST use the All-1 format
 #    specified in Section 8.3.1.2.
     
-    
-    ruleID_FEC = None   # RuleID of the FEC rule
-    rule_boundTo = None # correspond to the ruleID of the "used" usual fragmentation rule.
+
     xorFrags = 3       # number of usual fragments to be sent before the rendondent one.
 
     circular_buffer = []
@@ -290,18 +293,20 @@ class FragmentNoAck(FragmentBase):
             mic=self.mic_sent,
             payload=tile)
 
-        if tile is not None and (0 <= self.fragment_counter <= self.xorFrags):
-            self.circular_buffer.append(tile.get_content())         # get content pour ne pas avoir le /xxx, pour le calcul du xor
+        if self.fec_enabled:
+            xorFrags = self.fecrule[T_FRAG_FEC][T_FRAG_FEC_XORFRAGS]
+            if tile is not None and (0 <= self.fragment_counter <= xorFrags):
+                self.circular_buffer.append(tile.get_content())         # get content pour ne pas avoir le /xxx, pour le calcul du xor
 
-        self.fragment_counter += 1
+            self.fragment_counter += 1
 
-        if(self.fragment_counter >= self.xorFrags):
-            padded_fecbuffer = self.pad_bytearrays_to_max_length(self.circular_buffer)  # on pad tous les elem par rapport a la taille de l'elem max(len())
-            self.circular_buffer.clear()                                                # reset le circular pour le prochain cycle xorfrag
-            self.xor_buffer = BitBuffer(self.get_xor_bytearray(padded_fecbuffer))       # Xor de tous les frag paddés, TODO attention au suffixe /xxx !!!
+            if(self.fragment_counter >= xorFrags):
+                padded_fecbuffer = self.pad_bytearrays_to_max_length(self.circular_buffer)  # on pad tous les elem par rapport a la taille de l'elem max(len())
+                self.circular_buffer.clear()                                                # reset le circular pour le prochain cycle xorfrag
+                self.xor_buffer = BitBuffer(self.get_xor_bytearray(padded_fecbuffer))       # Xor de tous les frag paddés, TODO attention au suffixe /xxx !!!
 
-            flag_fec = True
-            self.fragment_counter = 0
+                flag_fec = True
+                self.fragment_counter = 0
 
         # send a SCHC fragment
         if self.protocol.position == T_POSITION_DEVICE:
@@ -356,16 +361,14 @@ class FragmentNoAck(FragmentBase):
         self.protocol.scheduler.add_event(0, self.protocol.layer2.send_packet,
                                           args, session_id = self._session_id) # Add session_id
         
-        if(flag_fec):
+        if self.fec_enabled and flag_fec:
             
             fec_frag = frag_msg.frag_sender_tx(
-                self.rule, dtag=self.dtag,
+                self.fecrule, dtag=self.dtag,
                 win=None,
                 fcn=99999,
                 mic=self.mic_sent,
                 payload=self.xor_buffer)
-        
-            print(" ************************* je être XOR *************************")
 
             if self.protocol.position == T_POSITION_DEVICE:
                 dest = self._session_id[0] # core address
@@ -375,17 +378,17 @@ class FragmentNoAck(FragmentBase):
             args = (fec_frag.packet.get_content(), dest)
 
             if self.verbose:
-                if self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_DTAG_SIZE] == 0:
+                if self.fecrule[T_FRAG][T_FRAG_PROF][T_FRAG_DTAG_SIZE] == 0:
                     w_dtag = '-'
                 else:
                     w_dtag = fec_frag.dtag
 
-                if self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_W_SIZE] == 0:
+                if self.fecrule[T_FRAG][T_FRAG_PROF][T_FRAG_W_SIZE] == 0:
                     w_w = '-'
                 else:
                     w_w = fec_frag.win
 
-                all1 = 2**self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN]-1
+                all1 = 2**self.fecrule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN]-1
                 if fec_frag.fcn == all1:
                     w_fcn = "All-1"
                 elif fec_frag.fcn == 0:
@@ -396,16 +399,16 @@ class FragmentNoAck(FragmentBase):
                 if self.protocol.position == T_POSITION_CORE:
                     print ("<--{:3}--| r:{}/{} (noA) DTAG={} W={} FCN={}  ".format(
                         len(fec_frag.packet._content),
-                        self.rule[T_RULEID],
-                        self.rule[T_RULEIDLENGTH],
+                        self.fecrule[T_RULEID],
+                        self.fecrule[T_RULEIDLENGTH],
                         w_dtag,
                         w_w,
                         w_fcn
                         ))
                 elif self.protocol.position == T_POSITION_DEVICE:
                     print ("r:{}/{} (noA) DTAG={} W={} FCN={}  |--{:3}-->".format(
-                        self.rule[T_RULEID],
-                        self.rule[T_RULEIDLENGTH],
+                        self.fecrule[T_RULEID],
+                        self.fecrule[T_RULEIDLENGTH],
                         w_dtag,
                         w_w,
                         w_fcn,
@@ -414,7 +417,6 @@ class FragmentNoAck(FragmentBase):
                 else:
                     print("Unknown position to display frag")
 
-            print(" ************************* je plus XOR *************************")
             flag_fec = False
 
     def event_sent_frag(self, status=0): # status == nb actually sent (for now)

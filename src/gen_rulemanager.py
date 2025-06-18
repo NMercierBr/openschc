@@ -476,7 +476,7 @@ class RuleManager:
         if frag_rule is None:
             raise ValueError(f"Forward error correction rule initialization : the associated fragmentation rule {bound_id}/{bound_len} doesnt exist.")
         
-        # On sécurise l'acces a la FEC seulement au mode no-ack pour l'instant
+        # On sécurise l'acces a la FEC seulement au mode no-ack pour l'instant, TODO autres modes plus tard
         if frag_rule[T_FRAG][T_FRAG_MODE] != T_FRAG_NO_ACK:
             raise ValueError(f"You can use Forward Error Correction, only in No-ACK fragmentation mode")
 
@@ -486,10 +486,10 @@ class RuleManager:
 
         # a partir d'ici, je peux copier des infos de la regle de frag originelle, par exemple comme ca :
         # arule[T_FRAG_FEC]["FRMode"] = frag_rule[T_FRAG][T_FRAG_MODE]
-
         arule[T_FRAG_FEC]["FRDirection"] = frag_rule[T_FRAG][T_FRAG_DIRECTION]
 
-        print("Règle de FEC : \n",arule)
+        #arule[T_FRAG_FEC]["FRMode"] = frag_rule[T_FRAG][T_FRAG_MODE]
+
         return arule
 
     def _create_fragmentation_rule (self, nrule):

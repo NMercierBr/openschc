@@ -12,6 +12,7 @@ import protocol
 import frag_msg
 from frag_tile import TileList
 from frag_bitmap import make_bit_list
+from gen_rulemanager import RuleManager
 
 try:
     import utime as time
@@ -28,13 +29,15 @@ from compr_core import *
 max_ack_requests = 8
 
 class FragmentBase():
-    def __init__(self, rule, mtu_in_bytes, protocol=None, context=None, dtag=None):
+    def __init__(self, rule, mtu_in_bytes, protocol=None, context=None, dtag=None, fecrule = None):
         self.protocol = protocol
         self.context = context
         self.rule = rule
+        print("test : " )
         self.mtu = 50
         self.l2word = 8 # self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_L2WORDSIZE]
         self.dtag = dtag
+        self.fecrule = fecrule
         # self.mic is used to check whether All-1 has been sent or not.
         self.mic_sent = None
         self.event_id_ack_wait_timer = None

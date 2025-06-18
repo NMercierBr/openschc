@@ -489,7 +489,7 @@ class RuleManager:
 
         arule[T_FRAG_FEC]["FRDirection"] = frag_rule[T_FRAG][T_FRAG_DIRECTION]
 
-        print(arule)
+        print("Règle de FEC : \n",arule)
         return arule
 
     def _create_fragmentation_rule (self, nrule):

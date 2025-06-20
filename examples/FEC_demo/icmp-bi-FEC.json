@@ -30,7 +30,7 @@
 	"ForwardErrorCorrection" : {
 		"BoundToID": 9 ,
     "BoundToLength" : 4,
-    "XorFrags" : 7
+    "XorFrags" : 4
 	  	} 
 	  }
   ]

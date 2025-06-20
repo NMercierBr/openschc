@@ -41,10 +41,13 @@ class FragmentBase():
             self.fec_enabled = True
             self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN] = math.ceil(math.log2(self.fecrule[T_FRAG_FEC][T_FRAG_FEC_XORFRAGS] + 1)) # black magic here but it works
             self.fecrule["Fragmentation"] = rule["Fragmentation"]
+            self.xorFrags = self.fecrule[T_FRAG_FEC][T_FRAG_FEC_XORFRAGS]
             self.circular_buffer = []
-            self.fragment_counter = 0      #compteur, a besoin de commencer a -1 pour le premier groupe de frag
-            self.fcn_counter = (2**self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN])-1
+            self.fragment_counter = 0 
+            self.fcn_counter = (2**self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN])-2
             self.xor_buffer = 0
+            self.fcn_for_fec = self.fcn_counter
+            self.save_nxt_fcn = False
             print(self.fecrule)
         else:
             self.fec_enabled = False
@@ -235,6 +238,7 @@ class FragmentNoAck(FragmentBase):
         #                                                       |<- L2 Word
         mtu = self.protocol.connectivity_manager.get_mtu("toto")
         mtu = self.protocol.layer2.get_mtu_size()
+        fcn_size = self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN]
         flag_fec = False
 
         payload_size = (mtu - frag_msg.get_sender_header_size(self.rule))
@@ -246,7 +250,15 @@ class FragmentNoAck(FragmentBase):
 
             transmit_callback = None
             self.protocol.scheduler.add_event(0, self.event_sent_frag, ())
-            fcn = 0
+            if fcn_size == 1:           #ALL-0
+                fcn = 0
+            else:
+                fcn = self.fcn_counter
+                if(self.fcn_counter==0):
+                    self.fcn_counter=(2**self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN])-2
+                else:
+                    self.fcn_counter-=1
+
             self.mic_sent = None
 
             if enable_statsct:
@@ -282,7 +294,16 @@ class FragmentNoAck(FragmentBase):
                               remaining_data_size) % self.l2word)
                 tile = self.packet_bbuf.get_bits_as_buffer(tile_size)
                 self.protocol.scheduler.add_event(0, self.event_sent_frag, ())
-                fcn = 0
+
+                if fcn_size == 1:           #ALL-0
+                    fcn = 0
+                else:
+                    fcn = self.fcn_counter
+                    if(self.fcn_counter==0):
+                        self.fcn_counter=(2**self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN])-2
+                    else:
+                        self.fcn_counter-=1
+
                 self.mic_sent = None
                 if enable_statsct:
                     Statsct.set_msg_type("SCHC_FRAG")
@@ -294,21 +315,25 @@ class FragmentNoAck(FragmentBase):
             fcn=fcn,
             mic=self.mic_sent,
             payload=tile)
+        
+        if self.save_nxt_fcn:
+            self.fcn_for_fec = schc_frag.fcn
+            self.save_nxt_fcn = False
 
         if self.fec_enabled:
-            xorFrags = self.fecrule[T_FRAG_FEC][T_FRAG_FEC_XORFRAGS]
-            if tile is not None and (0 <= self.fragment_counter <= xorFrags):
+            if tile is not None and (0 <= self.fragment_counter <= self.xorFrags):
                 self.circular_buffer.append(tile.get_content())         # get content pour ne pas avoir le /xxx, pour le calcul du xor
 
             self.fragment_counter += 1
 
-            if(self.fragment_counter >= xorFrags):
+            if(self.fragment_counter >= self.xorFrags):
                 padded_fecbuffer = self.pad_bytearrays_to_max_length(self.circular_buffer)  # on pad tous les elem par rapport a la taille de l'elem max(len())
                 self.circular_buffer.clear()                                                # reset le circular pour le prochain cycle xorfrag
                 self.xor_buffer = BitBuffer(self.get_xor_bytearray(padded_fecbuffer))       # Xor de tous les frag paddés, TODO attention au suffixe /xxx !!!
 
                 flag_fec = True
                 self.fragment_counter = 0
+                self.save_nxt_fcn = True
 
         # send a SCHC fragment
         if self.protocol.position == T_POSITION_DEVICE:
@@ -368,7 +393,7 @@ class FragmentNoAck(FragmentBase):
             fec_frag = frag_msg.frag_sender_tx(
                 self.fecrule, dtag=self.dtag,
                 win=None,
-                fcn=99999,
+                fcn=self.fcn_for_fec,
                 mic=self.mic_sent,
                 payload=self.xor_buffer)
 

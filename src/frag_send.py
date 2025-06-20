@@ -40,6 +40,7 @@ class FragmentBase():
             self.fecrule = fecrule[0]
             self.fec_enabled = True
             self.fecrule["Fragmentation"] = rule["Fragmentation"]
+            print(self.fecrule)
         else:
             self.fec_enabled = False
 
@@ -199,7 +200,6 @@ class FragmentNoAck(FragmentBase):
     fragment_counter = 0      #compteur, a besoin de commencer a -1 pour le premier groupe de frag
     xor_buffer = 0
 
-
     def set_packet(self, packet_bbuf):
         super().set_packet(packet_bbuf)
         # because draft-18 requires that in No-ACK mode, each fragment must
@@ -209,6 +209,9 @@ class FragmentNoAck(FragmentBase):
         min_size = (frag_msg.get_sender_header_size(self.rule) +
                         frag_msg.get_mic_size(self.rule) + self.l2word)   
         #print ('MTU = ', self.protocol.connectivity_manager.get_mtu("toto"), min_size)
+
+        print("\n************* La taille du FCN est : ", self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN] , "\n") #TODO need FCN > 1s
+
         if self.mtu < min_size:
            print("toto")
            raise ValueError("the MTU={} is not enough to carry the SCHC fragment of No-ACK mode={}".format(self.mtu, min_size))
@@ -360,7 +363,7 @@ class FragmentNoAck(FragmentBase):
 
         self.protocol.scheduler.add_event(0, self.protocol.layer2.send_packet,
                                           args, session_id = self._session_id) # Add session_id
-        
+
         if self.fec_enabled and flag_fec:
             
             fec_frag = frag_msg.frag_sender_tx(

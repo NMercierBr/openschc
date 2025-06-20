@@ -22,7 +22,8 @@
 	"RuleIDLength" : 4,
 	"Fragmentation" : {
 		"FRMode": "NoAck" ,
-		"FRDirection": "UP"
+		"FRDirection": "UP",
+    "FCNSize" : 3
 		} 
 	},{
 	"RuleID" : 20,

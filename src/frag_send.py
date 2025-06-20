@@ -316,7 +316,7 @@ class FragmentNoAck(FragmentBase):
             mic=self.mic_sent,
             payload=tile)
         
-        if self.save_nxt_fcn:
+        if self.fec_enabled and self.save_nxt_fcn:
             self.fcn_for_fec = schc_frag.fcn
             self.save_nxt_fcn = False
 

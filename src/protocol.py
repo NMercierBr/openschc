@@ -79,7 +79,7 @@ class SessionManager:
 
     def delete_session(self, session_id):
         self.session_table.pop(session_id)
-        print("SessionManager: deleted", session_id)
+        #print("SessionManager: deleted", session_id)
 
     def create_reassembly_session(self, context, rule, session_id): #TODO
         session_id = self._filter_session_id(session_id)  

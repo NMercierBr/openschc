@@ -32,14 +32,19 @@ class FragmentBase():
         self.protocol = protocol
         self.context = context
         self.rule = rule
-        self.mtu = 50
+        self.mtu = 60
         self.l2word = 8 # self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_L2WORDSIZE]
         self.dtag = dtag
 
         if fecrule:
             self.fecrule = fecrule[0]
             self.fec_enabled = True
+            self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN] = math.ceil(math.log2(self.fecrule[T_FRAG_FEC][T_FRAG_FEC_XORFRAGS] + 1)) # black magic here but it works
             self.fecrule["Fragmentation"] = rule["Fragmentation"]
+            self.circular_buffer = []
+            self.fragment_counter = 0      #compteur, a besoin de commencer a -1 pour le premier groupe de frag
+            self.fcn_counter = (2**self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN])-1
+            self.xor_buffer = 0
             print(self.fecrule)
         else:
             self.fec_enabled = False
@@ -193,13 +198,7 @@ class FragmentNoAck(FragmentBase):
 #    Section 8.3.1.1.  The last SCHC Fragment MUST use the All-1 format
 #    specified in Section 8.3.1.2.
     
-
-    xorFrags = 3       # number of usual fragments to be sent before the rendondent one.
-
-    circular_buffer = []
-    fragment_counter = 0      #compteur, a besoin de commencer a -1 pour le premier groupe de frag
-    xor_buffer = 0
-
+            
     def set_packet(self, packet_bbuf):
         super().set_packet(packet_bbuf)
         # because draft-18 requires that in No-ACK mode, each fragment must

@@ -541,9 +541,10 @@ class RuleManager:
                     _default_value(arule, nrule, T_FRAG_DTAG_SIZE, 2)
                     _default_value (arule, nrule, T_FRAG_W_SIZE, 0)
                     if T_FRAG in nrule and T_FRAG_FCN in nrule[T_FRAG]:
-                        arule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN] = nrule[T_FRAG][T_FRAG_FCN]      #FEC test
+                        raise ValueError ("Don't specify FCN Size for NoAck")
                     else:
                         _default_value (arule, nrule, T_FRAG_FCN, 1)
+
                     _default_value(arule, nrule, T_FRAG_L2WORDSIZE, 8)
                 elif nrule[T_FRAG][T_FRAG_MODE] == T_FRAG_ACK_ALWAYS:
                     _default_value (arule, nrule, T_FRAG_W_SIZE, 1)

@@ -22,8 +22,7 @@
 	"RuleIDLength" : 4,
 	"Fragmentation" : {
 		"FRMode": "NoAck" ,
-		"FRDirection": "UP",
-    "FCNSize" : 3
+		"FRDirection": "UP"
 		} 
 	},{
 	"RuleID" : 20,
@@ -31,7 +30,7 @@
 	"ForwardErrorCorrection" : {
 		"BoundToID": 9 ,
     "BoundToLength" : 4,
-    "XorFrags" : 3
+    "XorFrags" : 7
 	  	} 
 	  }
   ]

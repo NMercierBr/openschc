@@ -18,7 +18,7 @@
        "CDA": "not-sent"}
       ]
     },{
-	"RuleID" : 9,
+	"RuleID" : 8,
 	"RuleIDLength" : 4,
 	"Fragmentation" : {
 		"FRMode": "NoAck" ,

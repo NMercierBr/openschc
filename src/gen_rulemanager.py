@@ -541,7 +541,7 @@ class RuleManager:
                     _default_value(arule, nrule, T_FRAG_DTAG_SIZE, 2)
                     _default_value (arule, nrule, T_FRAG_W_SIZE, 0)
                     if T_FRAG in nrule and T_FRAG_FCN in nrule[T_FRAG]:
-                        raise ValueError ("Don't specify FCN Size for NoAck")
+                        raise ValueError ("Don't specify FCN Size for NoAck Fragmentation rule")
                     else:
                         _default_value (arule, nrule, T_FRAG_FCN, 1)
 

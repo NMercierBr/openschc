@@ -37,6 +37,7 @@ while True:
         SCHC_pkt, device = tunnel.recvfrom(2000)
         origin, full_packet = schc_machine.schc_recv(SCHC_pkt, device_id=deviceID, verbose=True)
 
+
         if full_packet:
             print("[+] Got packet:")
             full_packet.show()

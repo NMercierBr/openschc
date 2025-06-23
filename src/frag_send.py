@@ -212,8 +212,6 @@ class FragmentNoAck(FragmentBase):
                         frag_msg.get_mic_size(self.rule) + self.l2word)   
         #print ('MTU = ', self.protocol.connectivity_manager.get_mtu("toto"), min_size)
 
-        print("\n************* La taille du FCN est : ", self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN] , "\n") #TODO need FCN > 1s
-
         if self.mtu < min_size:
            print("toto")
            raise ValueError("the MTU={} is not enough to carry the SCHC fragment of No-ACK mode={}".format(self.mtu, min_size))
@@ -329,8 +327,7 @@ class FragmentNoAck(FragmentBase):
             if(self.fragment_counter >= self.xorFrags):
                 padded_fecbuffer = self.pad_bytearrays_to_max_length(self.circular_buffer)  # on pad tous les elem par rapport a la taille de l'elem max(len())
                 self.circular_buffer.clear()                                                # reset le circular pour le prochain cycle xorfrag
-                self.xor_buffer = BitBuffer(self.get_xor_bytearray(padded_fecbuffer))       # Xor de tous les frag paddés, TODO attention au suffixe /xxx !!!
-
+                self.xor_buffer = BitBuffer(self.get_xor_bytearray(padded_fecbuffer))       # Xor de tous les frag paddés, attention au suffixe /xxx (selon alex cest bon)
                 flag_fec = True
                 self.fragment_counter = 0
                 self.save_nxt_fcn = True
@@ -433,7 +430,7 @@ class FragmentNoAck(FragmentBase):
                         w_fcn
                         ))
                 elif self.protocol.position == T_POSITION_DEVICE:
-                    print ("r:{}/{} (noA) DTAG={} W={} FCN={}  |--{:3}-->".format(
+                    print ("r:{}/{} (noA) DTAG={} W={} FCN={}  |--{:3}--> FEC FRAG".format(
                         self.fecrule[T_RULEID],
                         self.fecrule[T_RULEIDLENGTH],
                         w_dtag,
@@ -444,6 +441,9 @@ class FragmentNoAck(FragmentBase):
                 else:
                     print("Unknown position to display frag")
 
+            self.protocol.scheduler.add_event(0, self.protocol.layer2.send_packet,
+                                    args, session_id = self._session_id) # Add session_id
+            
             flag_fec = False
 
     def event_sent_frag(self, status=0): # status == nb actually sent (for now)

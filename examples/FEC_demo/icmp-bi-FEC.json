@@ -18,19 +18,19 @@
        "CDA": "not-sent"}
       ]
     },{
-	"RuleID" : 9,
+	"RuleID" : 8,
 	"RuleIDLength" : 4,
 	"Fragmentation" : {
 		"FRMode": "NoAck" ,
 		"FRDirection": "UP"
 		} 
 	},{
-	"RuleID" : 20,
-	"RuleIDLength" : 10,
+	"RuleID" : 9,
+	"RuleIDLength" : 5,
 	"ForwardErrorCorrection" : {
-		"BoundToID": 9 ,
+		"BoundToID": 8 ,
     "BoundToLength" : 4,
-    "XorFrags" : 4
+    "XorFrags" : 3
 	  	} 
 	  }
   ]

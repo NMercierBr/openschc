@@ -40,7 +40,7 @@ class FragmentBase():
             self.fecrule = fecrule[0]
             self.fec_enabled = True
             self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN] = math.ceil(math.log2(self.fecrule[T_FRAG_FEC][T_FRAG_FEC_XORFRAGS] + 1)) # black magic here but it works
-            self.fecrule["Fragmentation"] = rule["Fragmentation"]
+            self.fecrule["Fragmentation"] = rule["Fragmentation"]           #recopie dans fecrule des parametres de la regle rule
             self.xorFrags = self.fecrule[T_FRAG_FEC][T_FRAG_FEC_XORFRAGS]
             self.circular_buffer = []
             self.fragment_counter = 0 
@@ -48,7 +48,8 @@ class FragmentBase():
             self.xor_buffer = 0
             self.fcn_for_fec = self.fcn_counter
             self.save_nxt_fcn = False
-            print(self.fecrule)
+
+            #print(self.fecrule)
         else:
             self.fec_enabled = False
 
@@ -161,22 +162,26 @@ class FragmentBase():
 
         return self.sender_abort_sent
 
+#-------------------------------------- FEC UTILITIES
+
     def pad_bytearrays_to_max_length(self, data: list[bytearray]) -> list[bytearray]:
         max_len = max(len(b) for b in data)
-        return [bytearray([0x00] * (max_len - len(b)) + list(b)) for b in data]
+        return [bytearray([0x00] * (max_len - len(b)) + list(b)) for b in data] # on pad (0 a gauche), si necessaire, tous les fragments < au plus long fragment
 
     def get_xor_bytearray(self, arr):
         if not arr:
             return bytearray()
 
-        length = len(arr[0])            #deja paddé donc taille max
+        length = len(arr[0])            #deja paddé donc forcement taille max
         result = bytearray(length)
 
         for barr in arr:
             for i in range(length):
                 result[i] ^= barr[i]
-
+                
         return result
+
+#-------------------------------------- 
 
 class FragmentNoAck(FragmentBase):
 
@@ -250,9 +255,9 @@ class FragmentNoAck(FragmentBase):
             self.protocol.scheduler.add_event(0, self.event_sent_frag, ())
             if fcn_size == 1:           #ALL-0
                 fcn = 0
-            else:
+            else:                       #pour FCNSize > 1
                 fcn = self.fcn_counter
-                if(self.fcn_counter==0):
+                if(self.fcn_counter==0):        # valeur pour le prochain fragment
                     self.fcn_counter=(2**self.rule[T_FRAG][T_FRAG_PROF][T_FRAG_FCN])-2
                 else:
                     self.fcn_counter-=1
@@ -314,15 +319,15 @@ class FragmentNoAck(FragmentBase):
             mic=self.mic_sent,
             payload=tile)
         
-        if self.fec_enabled and self.save_nxt_fcn:
+        if self.fec_enabled and self.save_nxt_fcn:      # on garde en mémoire le fcn du premier fragment de la "window", qui sera plus tard le fcn du frag FEC
             self.fcn_for_fec = schc_frag.fcn
             self.save_nxt_fcn = False
 
         if self.fec_enabled:
-            if tile is not None and (0 <= self.fragment_counter <= self.xorFrags):
+            if tile is not None and (0 <= self.fragment_counter <= self.xorFrags):      #sauvegarde de la payload
                 self.circular_buffer.append(tile.get_content())         # get content pour ne pas avoir le /xxx, pour le calcul du xor
 
-            self.fragment_counter += 1
+            self.fragment_counter += 1      #on pourrait directement verifier le nb d'element dans le buffer plutot que davoir un compteur
 
             if(self.fragment_counter >= self.xorFrags):
                 padded_fecbuffer = self.pad_bytearrays_to_max_length(self.circular_buffer)  # on pad tous les elem par rapport a la taille de l'elem max(len())
@@ -385,7 +390,7 @@ class FragmentNoAck(FragmentBase):
         self.protocol.scheduler.add_event(0, self.protocol.layer2.send_packet,
                                           args, session_id = self._session_id) # Add session_id
 
-        if self.fec_enabled and flag_fec:
+        if self.fec_enabled and flag_fec:           #envoi du fragment FEC sur le canal
             
             fec_frag = frag_msg.frag_sender_tx(
                 self.fecrule, dtag=self.dtag,
@@ -393,7 +398,7 @@ class FragmentNoAck(FragmentBase):
                 fcn=self.fcn_for_fec,
                 mic=self.mic_sent,
                 payload=self.xor_buffer)
-
+                
             if self.protocol.position == T_POSITION_DEVICE:
                 dest = self._session_id[0] # core address
             else:
@@ -509,6 +514,7 @@ class FragmentAckOnError(FragmentBase):
                 self.num_of_windows += 1
         dprint("frag_send.py, Number of windows = {}".format(self.num_of_windows))
         #input("")
+
 
     def send_frag(self):
         if self.state == self.ACK_SUCCESS:

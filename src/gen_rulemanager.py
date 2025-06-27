@@ -443,7 +443,7 @@ class RuleManager:
                     raise ValueError ("Rule type undefined")
                 #print (n_rule)
 
-    def _create_forwarderrorcorrection_rule(self, nrule):       #TODO, creation de nouvelle regle de FEC
+    def _create_forwarderrorcorrection_rule(self, nrule):       #creation de nouvelle regle de FEC
         arule = {}
         if T_RULEID in nrule:
             arule[T_RULEID] = nrule[T_RULEID]
@@ -457,7 +457,7 @@ class RuleManager:
         arule[T_FRAG_FEC] = {}
 
         fec_params = nrule.get(T_FRAG_FEC, {})
-        for required in [T_FRAG_FEC_BOUNDTO_ID, T_FRAG_FEC_BOUNDTO_LENGTH, T_FRAG_FEC_XORFRAGS]:
+        for required in [T_FRAG_FEC_BOUNDTO_ID, T_FRAG_FEC_BOUNDTO_LENGTH, T_FRAG_FEC_XORFRAGS]:        #paramètres obligatoires pour la FEC
             if required not in fec_params:
                 raise ValueError(f"Missing required parameter '{required}' in ForwardErrorCorrection rule.")
 
@@ -465,7 +465,7 @@ class RuleManager:
         bound_len = fec_params[T_FRAG_FEC_BOUNDTO_LENGTH]
         
         frag_rule = None
-        for dev in self._ctxt:
+        for dev in self._ctxt:              # on retrouve la règle de frag classique, a laquelle la regle de FEC est attachée
             for rule in dev["SoR"]:
                 if rule[T_RULEID] == bound_id and rule[T_RULEIDLENGTH] == bound_len and T_FRAG in rule:
                     frag_rule = rule
@@ -476,7 +476,7 @@ class RuleManager:
         if frag_rule is None:
             raise ValueError(f"Forward error correction rule initialization : the associated fragmentation rule {bound_id}/{bound_len} doesnt exist.")
         
-        # On sécurise l'acces a la FEC seulement au mode no-ack pour l'instant, TODO autres modes plus tard
+        # On sécurise l'acces a la FEC seulement au mode no-ack pour l'instant, TODO autoriser autres modes plus tard (AoE...)
         if frag_rule[T_FRAG][T_FRAG_MODE] != T_FRAG_NO_ACK:
             raise ValueError(f"You can use Forward Error Correction, only in No-ACK fragmentation mode")
 
@@ -487,7 +487,7 @@ class RuleManager:
         # a partir d'ici, je peux copier des infos de la regle de frag originelle, par exemple comme ca :
         # arule[T_FRAG_FEC]["FRMode"] = frag_rule[T_FRAG][T_FRAG_MODE]
         arule[T_FRAG_FEC]["FRDirection"] = frag_rule[T_FRAG][T_FRAG_DIRECTION]
-
+        # TODO surement necessaire de rajouter des champs, surtout pour d'autre modes que NoACK
         #arule[T_FRAG_FEC]["FRMode"] = frag_rule[T_FRAG][T_FRAG_MODE]
 
         return arule
@@ -519,11 +519,6 @@ class RuleManager:
             raise ValueError ("Keyword {} must be {} or {}".format(T_FRAG_DIRECTION, T_DIR_UP, T_DIR_DW))
 
         arule[T_FRAG][T_FRAG_DIRECTION] = nrule[T_FRAG][T_FRAG_DIRECTION] 
-
-
-
-    
-
 
         if  T_FRAG_MODE in nrule[T_FRAG]:
             if not T_FRAG_PROF in nrule[T_FRAG]:
@@ -810,8 +805,8 @@ class RuleManager:
                         ))
 
                     print ("\\" + "="*87 +"/")
-                elif T_FRAG_FEC in rule:
-                    if rule[T_FRAG_FEC][T_FRAG_DIRECTION] == T_DIR_UP:
+                elif T_FRAG_FEC in rule:                               # affiche de regle de FEC par le rule manager           vvv
+                    if rule[T_FRAG_FEC][T_FRAG_DIRECTION] == T_DIR_UP: # un peu ecrit en dur, quelques modif a faire pour rendre ca propre
                         dir_c = "^"
                     else:
                         dir_c = "v"
